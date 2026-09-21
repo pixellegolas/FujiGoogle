@@ -1,0 +1,16 @@
+{
+  "appId": "com.fujicam.app",
+  "appName": "FujiCam",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "backgroundColor": "#000000"
+  },
+  "plugins": {
+    "Camera": {
+      "permissions": ["camera"]
+    }
+  }
+}

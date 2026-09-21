@@ -1,0 +1,6 @@
+{
+  "name": "FujiCam",
+  "description": "Minimalistisk mobilkamera med Fujifilm film recipe-emulering, korn, bloom, halation och vitt linjehistogram.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
