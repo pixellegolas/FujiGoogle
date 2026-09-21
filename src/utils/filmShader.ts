@@ -41,6 +41,11 @@ float sCurve(float x, float c) {
   return 1.0 / (1.0 + exp(-c * (x - 0.5)));
 }
 
+// Utility Screen blend function helper
+vec3 screen(vec3 a, vec3 b) {
+  return 1.0 - (1.0 - a) * (1.0 - b);
+}
+
 void main() {
   vec2 uv = v_texCoord;
   vec4 baseColor = texture2D(u_image, uv);
@@ -138,11 +143,6 @@ void main() {
 
   gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }
-
-// Utility Screen blend function helper
-vec3 screen(vec3 a, vec3 b) {
-  return 1.0 - (1.0 - a) * (1.0 - b);
-}
 `;
 
 export class FilmWebGLRenderer {
@@ -154,12 +154,15 @@ export class FilmWebGLRenderer {
   private uniforms: Record<string, WebGLUniformLocation | null> = {};
 
   constructor(canvas: HTMLCanvasElement) {
-    const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true, alpha: false });
+    const gl =
+      canvas.getContext('webgl2', { preserveDrawingBuffer: true, alpha: false }) ||
+      canvas.getContext('webgl', { preserveDrawingBuffer: true, alpha: false }) ||
+      canvas.getContext('experimental-webgl', { preserveDrawingBuffer: true, alpha: false });
     if (!gl) {
       console.warn('WebGL not supported for FujiCam film shader');
       return;
     }
-    this.gl = gl;
+    this.gl = gl as WebGLRenderingContext;
     this.initShaders();
   }
 
@@ -377,6 +380,7 @@ export async function processHighResPhoto(
     iso?: number;
     shutter?: string;
     fStop?: string;
+    applyPostProcess?: boolean;
   } = {}
 ): Promise<{ dataUrl: string; width: number; height: number; sizeBytes: number }> {
   const {
@@ -389,6 +393,7 @@ export async function processHighResPhoto(
     iso = 400,
     shutter = '1/250s',
     fStop = 'f/2.0',
+    applyPostProcess = true,
   } = options;
 
   let srcW = (sourceImage as HTMLVideoElement).videoWidth || sourceImage.width;
@@ -475,7 +480,9 @@ export async function processHighResPhoto(
   // Draw base cropped image
   ctx.drawImage(sourceImage, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
-  // 1. Get pixel data for color matrix, tone curves and base film transformation
+  // 1-4. Apply post-processing if enabled (Film colors, tone curves, halation, bloom, grain)
+  if (applyPostProcess) {
+    // 1. Get pixel data for color matrix, tone curves and base film transformation
   const imgData = ctx.getImageData(0, 0, cropW, cropH);
   const data = imgData.data;
   const len = data.length;
@@ -638,13 +645,15 @@ export async function processHighResPhoto(
       ctx.restore();
     }
   }
+}
 
   // 5. Minimalist Fujifilm Aesthetic Stamp (optional date & recipe stamp in bottom right)
   if (showDateStamp) {
     ctx.save();
     const d = new Date();
     const dateStr = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
-    const stampText = `FUJICAM • ${recipe.name.toUpperCase()} • ISO ${iso} • ${dateStr}`;
+    const stampTag = applyPostProcess ? recipe.name.toUpperCase() : 'NATURAL';
+    const stampText = `FUJICAM • ${stampTag} • ISO ${iso} • ${dateStr}`;
 
     const fontSize = Math.max(12, Math.round(Math.min(cropW, cropH) * 0.024));
     ctx.font = `600 ${fontSize}px 'JetBrains Mono', monospace`;

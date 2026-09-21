@@ -82,8 +82,20 @@ export function useCamera() {
       }
 
       if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        await videoRef.current.play();
+        const v = videoRef.current;
+        v.playsInline = true;
+        v.muted = true;
+        v.autoplay = true;
+        v.setAttribute('playsinline', 'true');
+        v.setAttribute('webkit-playsinline', 'true');
+        v.srcObject = mediaStream;
+
+        const playPromise = v.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((e) => {
+            console.warn('Auto-play was prevented, waiting for user interaction:', e);
+          });
+        }
       }
 
       setStream(mediaStream);

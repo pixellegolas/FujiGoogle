@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { App as CapApp } from '@capacitor/app';
 import { FilmRecipe, CapturedPhoto, PhotoFolder, CameraSettings } from './types';
 import { FILM_RECIPES, DEFAULT_RECIPE } from './constants/recipes';
 import { useCamera } from './hooks/useCamera';
@@ -38,10 +39,88 @@ export default function App() {
 
   // UI state
   const [isGalleryOpen, setIsGalleryOpen] = useState<boolean>(false);
+  const [selectedGalleryPhoto, setSelectedGalleryPhoto] = useState<CapturedPhoto | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [shutterFlash, setShutterFlash] = useState<boolean>(false);
   const [recentCapture, setRecentCapture] = useState<string | null>(null);
+
+  // Keep a ref to latest navigation state for hardware back button listener
+  const navStateRef = useRef({
+    selectedGalleryPhoto,
+    isGalleryOpen,
+    isSettingsOpen,
+  });
+
+  useEffect(() => {
+    navStateRef.current = {
+      selectedGalleryPhoto,
+      isGalleryOpen,
+      isSettingsOpen,
+    };
+  }, [selectedGalleryPhoto, isGalleryOpen, isSettingsOpen]);
+
+  // Hardware back button navigation support (Android back gesture / button)
+  useEffect(() => {
+    let removeListener: (() => void) | null = null;
+
+    try {
+      const listenerPromise = CapApp.addListener('backButton', () => {
+        const { selectedGalleryPhoto: photo, isGalleryOpen: gallery, isSettingsOpen: settingsOpen } = navStateRef.current;
+
+        if (photo) {
+          // If viewing a single photo in detail, step back to the gallery list
+          setSelectedGalleryPhoto(null);
+        } else if (gallery) {
+          // If inside gallery list, step back to viewfinder live view
+          setIsGalleryOpen(false);
+        } else if (settingsOpen) {
+          // If settings modal is open, close it
+          setIsSettingsOpen(false);
+        } else {
+          // Already on viewfinder home screen, minimize / exit app
+          CapApp.exitApp();
+        }
+      });
+
+      listenerPromise.then((handle) => {
+        removeListener = () => handle.remove();
+      }).catch(() => {
+        // Not running in Capacitor or plugin unsupported
+      });
+    } catch {
+      // Browser environment fallback
+    }
+
+    return () => {
+      if (removeListener) removeListener();
+    };
+  }, []);
+
+  // Responsive device orientation tracking (portrait vs landscape)
+  const [isLandscape, setIsLandscape] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth > window.innerHeight;
+  });
+
+  useEffect(() => {
+    const handleOrientationChange = () => {
+      setIsLandscape(window.innerWidth > window.innerHeight);
+    };
+    window.addEventListener('resize', handleOrientationChange);
+    window.addEventListener('orientationchange', handleOrientationChange);
+    const mql = window.matchMedia?.('(orientation: landscape)');
+    if (mql?.addEventListener) {
+      mql.addEventListener('change', handleOrientationChange);
+    }
+    return () => {
+      window.removeEventListener('resize', handleOrientationChange);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      if (mql?.removeEventListener) {
+        mql.removeEventListener('change', handleOrientationChange);
+      }
+    };
+  }, []);
 
   // Camera hook
   const {
@@ -192,43 +271,48 @@ export default function App() {
   return (
     <main
       id="fujicam-app-root"
-      className="relative flex flex-col h-full w-full bg-black text-white select-none overflow-hidden"
+      className={`relative flex ${
+        isLandscape ? 'flex-row' : 'flex-col'
+      } h-full w-full bg-black text-white select-none overflow-hidden`}
     >
-      {/* Top Header Bar */}
-      <TopBar
-        photoCount={photos.length}
-        activeFolderName={activeFolder.name}
-        onOpenGallery={() => setIsGalleryOpen(true)}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        isProcessing={isProcessing}
-      />
+      {/* Viewport container (takes all remaining width/height) */}
+      <div className="relative flex-1 flex flex-col h-full min-w-0 overflow-hidden">
+        {/* Top Header Bar */}
+        <TopBar
+          photoCount={photos.length}
+          activeFolderName={activeFolder.name}
+          onOpenGallery={() => setIsGalleryOpen(true)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          isProcessing={isProcessing}
+          isLandscape={isLandscape}
+        />
 
-      {/* Main Viewport & Live Histogram */}
-      <Viewfinder
-        videoRef={videoRef}
-        selectedRecipe={selectedRecipe}
-        livePreview={livePreview}
-        isSimulated={isSimulated}
-        grainMultiplier={settings.grainMultiplier}
-        bloomMultiplier={settings.bloomMultiplier}
-        halationMultiplier={settings.halationMultiplier}
-        aspectRatio={settings.aspectRatio}
-        orientationLock={settings.orientationLock}
-        onToggleOrientation={handleToggleOrientation}
-        gridOverlay={settings.gridOverlay}
-        activeFolderName={activeFolder.name}
-        hasTorch={hasTorch}
-        isTorchOn={isTorchOn}
-        onToggleTorch={toggleTorch}
-        onSwitchCamera={switchCamera}
-        onOpenGallery={() => setIsGalleryOpen(true)}
-        shutterFlash={shutterFlash}
-      />
+        {/* Main Viewport & Live Histogram */}
+        <Viewfinder
+          videoRef={videoRef}
+          selectedRecipe={selectedRecipe}
+          livePreview={livePreview}
+          isSimulated={isSimulated}
+          grainMultiplier={settings.grainMultiplier}
+          bloomMultiplier={settings.bloomMultiplier}
+          halationMultiplier={settings.halationMultiplier}
+          aspectRatio={settings.aspectRatio}
+          orientationLock={settings.orientationLock}
+          onToggleOrientation={handleToggleOrientation}
+          gridOverlay={settings.gridOverlay}
+          activeFolderName={activeFolder.name}
+          hasTorch={hasTorch}
+          isTorchOn={isTorchOn}
+          onToggleTorch={toggleTorch}
+          onSwitchCamera={switchCamera}
+          onOpenGallery={() => setIsGalleryOpen(true)}
+          shutterFlash={shutterFlash}
+        />
+      </div>
 
-      {/* Bottom Shutter & Controls:
-          - Left: Minimalist rullista med alla film recipes
-          - Center: Solid rund foto-knapp
-          - Right: Checkbox för att toggla live-preview
+      {/* Shutter & Controls:
+          - In portrait: horizontal bar docked at bottom
+          - In landscape: vertical bar docked on the RIGHT side with centered white shutter button!
       */}
       <ControlBar
         selectedRecipe={selectedRecipe}
@@ -237,13 +321,16 @@ export default function App() {
         onToggleLivePreview={setLivePreview}
         onTakePhoto={handleTakePhoto}
         isProcessing={isProcessing}
+        isLandscape={isLandscape}
       />
 
-      {/* Quick capture preview thumbnail floating above bottom bar */}
+      {/* Quick capture preview thumbnail floating above controls */}
       {recentCapture && (
         <div
           onClick={() => setIsGalleryOpen(true)}
-          className="absolute bottom-28 left-4 z-40 w-12 h-12 rounded border-2 border-white overflow-hidden shadow-2xl animate-in zoom-in-50 duration-200 cursor-pointer"
+          className={`absolute z-40 w-12 h-12 rounded border-2 border-white overflow-hidden shadow-2xl animate-in zoom-in-50 duration-200 cursor-pointer ${
+            isLandscape ? 'bottom-3 left-3' : 'bottom-28 left-4'
+          }`}
         >
           <img src={recentCapture} alt="Senaste bild" className="w-full h-full object-cover" />
         </div>
@@ -252,7 +339,10 @@ export default function App() {
       {/* Gallery Modal with Folders & Management */}
       <GalleryModal
         isOpen={isGalleryOpen}
-        onClose={() => setIsGalleryOpen(false)}
+        onClose={() => {
+          setIsGalleryOpen(false);
+          setSelectedGalleryPhoto(null);
+        }}
         photos={photos}
         folders={folders}
         activeFolderId={activeFolderId}
@@ -261,6 +351,8 @@ export default function App() {
         onDeleteFolder={handleDeleteFolder}
         onDeletePhoto={handleDeletePhoto}
         onMovePhoto={handleMovePhoto}
+        selectedPhoto={selectedGalleryPhoto}
+        onSelectPhoto={setSelectedGalleryPhoto}
       />
 
       {/* Settings Modal */}

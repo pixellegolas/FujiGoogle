@@ -51,7 +51,8 @@ export interface PhotoFolder {
 }
 
 export interface CameraSettings {
-  livePreviewRecipe: boolean;
+  postProcessEnabled: boolean;
+  livePreviewRecipe?: boolean;
   activeRecipeId: string;
   activeFolderId: string;
   grainMultiplier: number;

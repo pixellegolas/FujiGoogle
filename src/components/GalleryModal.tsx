@@ -25,6 +25,8 @@ interface GalleryModalProps {
   onDeleteFolder: (folderId: string) => void;
   onDeletePhoto: (photoId: string) => void;
   onMovePhoto: (photoId: string, targetFolderId: string) => void;
+  selectedPhoto?: CapturedPhoto | null;
+  onSelectPhoto?: (photo: CapturedPhoto | null) => void;
 }
 
 export const GalleryModal: React.FC<GalleryModalProps> = ({
@@ -38,9 +40,13 @@ export const GalleryModal: React.FC<GalleryModalProps> = ({
   onDeleteFolder,
   onDeletePhoto,
   onMovePhoto,
+  selectedPhoto: externalSelectedPhoto,
+  onSelectPhoto: externalOnSelectPhoto,
 }) => {
   const [selectedFolderId, setSelectedFolderId] = useState<string>(activeFolderId);
-  const [selectedPhoto, setSelectedPhoto] = useState<CapturedPhoto | null>(null);
+  const [internalSelectedPhoto, setInternalSelectedPhoto] = useState<CapturedPhoto | null>(null);
+  const selectedPhoto = externalSelectedPhoto !== undefined ? externalSelectedPhoto : internalSelectedPhoto;
+  const setSelectedPhoto = externalOnSelectPhoto || setInternalSelectedPhoto;
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [showMoveDropdown, setShowMoveDropdown] = useState(false);

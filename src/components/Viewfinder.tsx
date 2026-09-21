@@ -8,7 +8,8 @@ import { SwitchCamera, Zap, ZapOff, Folder } from 'lucide-react';
 interface ViewfinderProps {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   selectedRecipe: FilmRecipe;
-  livePreview: boolean;
+  postProcess?: boolean;
+  livePreview?: boolean;
   isSimulated: boolean;
   grainMultiplier: number;
   bloomMultiplier: number;
@@ -29,6 +30,7 @@ interface ViewfinderProps {
 export const Viewfinder: React.FC<ViewfinderProps> = ({
   videoRef,
   selectedRecipe,
+  postProcess,
   livePreview,
   isSimulated,
   grainMultiplier,
@@ -46,6 +48,7 @@ export const Viewfinder: React.FC<ViewfinderProps> = ({
   onOpenGallery,
   shutterFlash,
 }) => {
+  const isPostProcessActive = postProcess ?? livePreview ?? true;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rendererRef = useRef<FilmWebGLRenderer | null>(null);
   const histCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -153,7 +156,7 @@ export const Viewfinder: React.FC<ViewfinderProps> = ({
           canvas.height = vh;
         }
 
-        if (livePreview && rendererRef.current) {
+        if (isPostProcessActive && rendererRef.current) {
           // Render through WebGL film emulation pipeline
           rendererRef.current.render(
             video,
@@ -200,16 +203,16 @@ export const Viewfinder: React.FC<ViewfinderProps> = ({
   return (
     <div
       id="camera-viewport-frame"
-      className="relative flex-1 w-full bg-black flex items-center justify-center overflow-hidden p-2 sm:p-4"
+      className="relative flex-1 w-full h-full bg-black flex items-center justify-center overflow-hidden p-1.5 sm:p-3"
       onClick={handleViewportClick}
     >
-      {/* Hidden source video element */}
+      {/* Source video element (kept active in layout with opacity 0 for hardware decoders) */}
       <video
         ref={videoRef}
         playsInline
         muted
         autoPlay
-        className="hidden"
+        className="absolute top-0 left-0 w-1 h-1 opacity-0 pointer-events-none -z-10"
       />
 
       {/* Frame container matching desired aspect ratio */}
@@ -217,10 +220,10 @@ export const Viewfinder: React.FC<ViewfinderProps> = ({
         className="relative bg-neutral-950 flex items-center justify-center overflow-hidden border border-white/10 shadow-2xl transition-all duration-300"
         style={{
           aspectRatio: getTargetAspectRatio(),
-          maxWidth: isPortraitMode ? 'min(100vw, 85vh)' : 'min(100vw, 90vh)',
-          maxHeight: isPortraitMode ? '100%' : 'min(100%, 82vh)',
-          width: isPortraitMode ? 'auto' : '100%',
-          height: isPortraitMode ? '100%' : 'auto',
+          maxWidth: '100%',
+          maxHeight: '100%',
+          height: '100%',
+          width: 'auto',
         }}
       >
         {/* Render Canvas */}
@@ -267,12 +270,20 @@ export const Viewfinder: React.FC<ViewfinderProps> = ({
 
         {/* Top Viewport HUD */}
         <div className="absolute top-2.5 left-3 right-3 flex items-start justify-between pointer-events-none z-10 text-white font-mono text-[10px] tracking-wider">
-          {/* Active Recipe Tag */}
+          {/* Active Recipe / Post-process Tag */}
           <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-xs border border-white/20 px-2 py-1 rounded max-w-[55%]">
-            <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 animate-pulse" />
-            <span className="font-bold shrink-0">{selectedRecipe.shortCode}</span>
+            <span
+              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                isPostProcessActive ? 'bg-white animate-pulse' : 'bg-neutral-500'
+              }`}
+            />
+            <span className="font-bold shrink-0">
+              {isPostProcessActive ? selectedRecipe.shortCode : 'NATURAL'}
+            </span>
             <span className="text-white/60 shrink-0">|</span>
-            <span className="text-white/80 truncate">{selectedRecipe.name.toUpperCase()}</span>
+            <span className="text-white/80 truncate">
+              {isPostProcessActive ? selectedRecipe.name.toUpperCase() : 'NO POST-PROCESS'}
+            </span>
           </div>
 
           {/* Top Right: Live White-Line Histogram */}

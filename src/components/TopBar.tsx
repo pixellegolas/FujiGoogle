@@ -8,6 +8,7 @@ interface TopBarProps {
   onOpenGallery: () => void;
   onOpenSettings: () => void;
   isProcessing: boolean;
+  isLandscape?: boolean;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -16,12 +17,22 @@ export const TopBar: React.FC<TopBarProps> = ({
   onOpenGallery,
   onOpenSettings,
   isProcessing,
+  isLandscape = false,
 }) => {
   return (
     <header
       id="camera-top-bar"
-      className="relative z-20 w-full bg-black border-b border-white/10 px-3 sm:px-4 py-2.5 flex items-center justify-between select-none"
-      style={{ paddingTop: 'calc(0.6rem + env(safe-area-inset-top, 0px))' }}
+      className={`relative z-20 w-full bg-black border-b border-white/10 px-3 sm:px-4 ${
+        isLandscape ? 'py-1 sm:py-1.5' : 'py-2 sm:py-2.5'
+      } flex items-center justify-between select-none`}
+      style={{
+        paddingTop: isLandscape
+          ? 'calc(0.35rem + env(safe-area-inset-top, 0px))'
+          : 'calc(0.6rem + env(safe-area-inset-top, 0px))',
+        paddingLeft: isLandscape
+          ? 'calc(0.75rem + env(safe-area-inset-left, 0px))'
+          : '0.75rem',
+      }}
     >
       {/* Brand logo */}
       <div className="flex items-center gap-2">
