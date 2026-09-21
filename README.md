@@ -90,31 +90,34 @@ Detta genererar en optimerad produktions-bundle i `dist/`-mappen.
 
 ---
 
-## 📱 Kompilera till Android (APK)
+## 📱 Kompilera och ladda ner APK till mobilen
 
-FujiCam kan installeras direkt som en **PWA (Progressive Web App)** eller kompileras till en fristående **Android APK** med Capacitor:
+FujiCam kan installeras direkt som en **PWA (Progressive Web App)** eller laddas ner som färdigkompilerad **Android APK**:
 
-### Alternativ 1: Installera som PWA på Android
-1. Öppna appen i Chrome på din Android-telefon.
-2. Klicka på **Installera app**-knappen eller välj i Chrome-menyn: **Lägg till på startskärmen**.
-3. FujiCam körs nu i fullskärm som en native app med offline-stöd och full kameratillgång.
+### Alternativ 1: Ladda ner färdig APK direkt från GitHub Actions 📦
+Varje gång kod pushas eller ett bygge startas på GitHub kompileras automatiskt en komplett Android-APK via GitHub Actions:
+1. Gå till fliken **Actions** i ditt GitHub-repository.
+2. Klicka på det senaste körda bygget (*"FujiCam CI & Android APK Build"*).
+3. Under rubriken **Artifacts** längst ner på sidan klickar du på **`FujiCam-Debug-APK`**.
+4. Packa upp zip-filen på din dator eller direkt i telefonen och installera `app-debug.apk` på din Android-telefon!
+*(Tips: Om Android frågar om "Okända källor" vid installation, godkänn installationen).*
 
-### Alternativ 2: Kompilera Android APK med Capacitor & Android Studio
-1. Installera Capacitor CLI och Android-plattformen:
+### Alternativ 2: Installera direkt som PWA i webbläsaren 📲
+1. Öppna appens URL i Chrome på din Android-telefon.
+2. Tryck på **Installera app**-knappen i toppmenyn (eller Chrome-menyn: **Installera app** / **Lägg till på startskärmen**).
+3. FujiCam körs nu i äkta fullskärm utan webbläsargränssnitt, med offline-stöd och snabb åtkomst från startskärmen.
+
+### Alternativ 3: Bygg APK lokalt med Android Studio
+1. Kör synkroniseringen:
    ```bash
-   npm install @capacitor/core @capacitor/cli @capacitor/android
+   npm run cap:sync
    ```
-2. Bygg webb-koden och synka med Android:
-   ```bash
-   npm run build
-   npx cap add android
-   npx cap copy
-   ```
-3. Öppna i Android Studio:
+2. Öppna Android-projektet:
    ```bash
    npx cap open android
    ```
-4. I Android Studio: Välj **Build > Build Bundle(s) / APK(s) > Build APK(s)**.
+3. I Android Studio: Välj **Build > Build Bundle(s) / APK(s) > Build APK(s)**.
+
 
 ---
 
